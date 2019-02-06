@@ -14,6 +14,7 @@
 #define PI 3.14159265359
 #include <pthread.h>
 #include <chrono>
+#include "bvh.hpp"
 
 float RAY_EPSILON = 0.000000001;
 bool antialiasing = true;
@@ -21,6 +22,7 @@ int numBounces = 5;
 int numThreads = 4;
 int SampPerPix = 4;
 float dummyt;
+int root = 0;
 
 struct arguments
 {
@@ -34,19 +36,42 @@ struct arguments
     std::vector<Light>* lights;
     int threadNum;
     long time;
+    std::vector<Node>* tree;
 };
 
 
 void startRayTracing(float width, float height, float (&pixelcolorBuffer)[360][720][3],glm::vec3 cameraPosition, glm::vec3 cameraDirection, std::vector<SceneObject>& scene, std::vector<Light>& lights)
 {
-    //attempting to clear cache
-    const size_t bigger_than_cachesize = 10 * 4096 * 2048;
-    long *p = new long[bigger_than_cachesize];
-    for(int i = 0; i < bigger_than_cachesize; i++)
+    
+    //*****Builds bvh tree*****
+    std::vector<Node> nodes;
+    Node start;
+    start.maxX = std::numeric_limits<float>::min();
+    start.minX = std::numeric_limits<float>::max();
+    start.maxY = std::numeric_limits<float>::min();
+    start.minY = std::numeric_limits<float>::max();;
+    start.maxZ = std::numeric_limits<float>::min();
+    start.minZ = std::numeric_limits<float>::max();;
+    //creates world bounding box information, includes all the objects
+    for(SceneObject obj: scene)
     {
-        p[i] = rand();
+        if(obj.position[0]-obj.radius < start.minX)
+            start.minX = obj.position[0]-obj.radius;
+        if(obj.position[1]-obj.radius < start.minY)
+            start.minY = obj.position[1]-obj.radius;
+        if(obj.position[2]-obj.radius < start.minZ)
+            start.minZ = obj.position[2]-obj.radius;
+        
+        if(obj.position[0]+obj.radius > start.maxX)
+            start.maxX = obj.position[0]+obj.radius;
+        if(obj.position[1]+obj.radius > start.maxY)
+            start.maxY = obj.position[1]+obj.radius;
+        if(obj.position[2]+obj.radius > start.maxZ)
+            start.maxZ = obj.position[2]+obj.radius;
     }
-    free(p);
+    start.midpoint = 0.0;
+    start.longestAxis = 0;
+    root = constructTree(scene, start, nodes);
     //*************************
     
     pthread_t thread[numThreads];
@@ -63,7 +88,7 @@ void startRayTracing(float width, float height, float (&pixelcolorBuffer)[360][7
         newThread->lights = &lights;
         newThread->chunkSize = chunkSize;
         newThread->threadNum = n;
-        
+        newThread->tree = &nodes;
         int rc = pthread_create(&thread[n], NULL, &CastRays,(void *)newThread);
         arr[n] = newThread;
         
@@ -73,7 +98,7 @@ void startRayTracing(float width, float height, float (&pixelcolorBuffer)[360][7
     {
        int rc =  pthread_join(thread[n], NULL);
     }
-                
+    
     //fills image buffer
     for(int n = 0; n<numThreads;n++)
     {
@@ -87,11 +112,8 @@ void startRayTracing(float width, float height, float (&pixelcolorBuffer)[360][7
             }
         }
     }
-    
-    for(int n = 0; n<numThreads;n++)
-        free(arr[n]);
-
 }
+
 
 
 void* CastRays(void *arguments)
@@ -123,8 +145,8 @@ void* CastRays(void *arguments)
                     float yoffset = ((float) rand()) / (float) RAND_MAX;
                     glm::vec3 sample = glm::normalize(glm::vec3(pix[0]+xoffset,pix[1]+yoffset,pix[2])-args->cameraPosition);
                     glm::vec3 colorTest = glm::vec3(0,0,0);
-                    if(!intersectObjects(rayPosition, sample, *args->scene, *args->lights, colorTest, false, numBounces, dummyt))
-                        rayPlaneIntersection(rayPosition, sample, colorTest,*args->scene,*args->lights,0);
+                    if(!intersectObjects(rayPosition, sample, *args->scene, *args->lights, colorTest, false, numBounces, dummyt,*args->tree))
+                        rayPlaneIntersection(rayPosition, sample, colorTest,*args->scene,*args->lights,0,*args->tree);
                     color+= colorTest;
                 }
                 color/=float(SampPerPix);
@@ -134,8 +156,8 @@ void* CastRays(void *arguments)
                 glm::vec3 rayDirection = glm::normalize((L+u*float(i)+v*float(j))-args->cameraPosition);
                 
                 
-                if(!intersectObjects(rayPosition, rayDirection, *args->scene, *args->lights, color, false, numBounces, dummyt))
-                    rayPlaneIntersection(rayPosition, rayDirection, color,*args->scene,*args->lights,0);
+                if(!intersectObjects(rayPosition, rayDirection, *args->scene, *args->lights, color, false, numBounces, dummyt,*args->tree))
+                    rayPlaneIntersection(rayPosition, rayDirection, color,*args->scene,*args->lights,0,*args->tree);
             }
             
             args->pix[359-j][i][0] = color[0];
@@ -148,13 +170,75 @@ void* CastRays(void *arguments)
     return NULL;
 }
 
+//returns the indecies of the objects to check based on ray
+//I think the problem is from overlapping bounding boxs and im not checking both boxs, maybe I need to return a list of possible bounding boxs
+void bvhTraverse(glm::vec3 position, glm::vec3 direction, std::vector<Node>& tree, int currentNode,std::vector<int>& boxs)
+{
+    int retValue = -1;
+    if(tree[currentNode].isleaf)
+    {
+        if(boundingBoxIntersection(position, direction, tree[currentNode]))
+        {
+            retValue = currentNode;
+            boxs.push_back(retValue);
+        }
+    }
+    else
+    {
+        if(boundingBoxIntersection(position, direction, tree[tree[currentNode].left]))
+            bvhTraverse(position, direction, tree, tree[currentNode].left,boxs);
+        if(boundingBoxIntersection(position, direction, tree[tree[currentNode].right]))
+            bvhTraverse(position, direction, tree, tree[currentNode].right,boxs);
+    }
+}
+//function taken and adapted from
+//https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-box-intersection
+bool boundingBoxIntersection(glm::vec3 position, glm::vec3 direction, Node& box)
+{
+    float tmin = (box.minX-position[0])/direction[0];
+    float tmax = (box.maxX-position[0])/direction[0];
+    
+    if(tmin>tmax)
+        std::swap(tmin,tmax);
+    
+    float tymin = (box.minY-position[1])/direction[1];
+    float tymax = (box.maxY-position[1])/direction[1];
+    
+    if(tymin>tymax)
+        std::swap(tymin,tymax);
+    
+    if((tmin > tymax) || (tymin > tmax))
+        return false;
+    
+    if (tymin > tmin)
+        tmin = tymin;
+    
+    if (tymax < tmax)
+        tmax = tymax;
+    
+    float tzmin = (box.minZ-position[2])/direction[2];
+    float tzmax = (box.maxZ-position[2])/direction[2];
+    
+    if (tzmin > tzmax)
+        std::swap(tzmin, tzmax);
+    
+    if ((tmin > tzmax) || (tzmin > tmax))
+        return false;
+    
+    if (tzmin > tmin)
+        tmin = tzmin;
+    
+    if (tzmax < tmax)
+        tmax = tzmax;
+    
+    return true;
+}
 
-bool intersectObjects(glm::vec3 position, glm::vec3 direction, std::vector<SceneObject>& scene, std::vector<Light>& lights, glm::vec3& color, bool shadowTest,int numBounces, float& t)
+bool intersectObjects(glm::vec3 position, glm::vec3 direction, std::vector<SceneObject>& scene, std::vector<Light>& lights, glm::vec3& color, bool shadowTest,int numBounces, float& t,std::vector<Node>& tree)
 {
     /*Set up for future additions
     
-     1. This makes it easy to add in an acceleration structure
-     2. Can add in other types of objects such as triangles
+     1. Can add in other types of objects such as triangles
     
      */
     float minT = std::numeric_limits<float>::max();
@@ -162,22 +246,33 @@ bool intersectObjects(glm::vec3 position, glm::vec3 direction, std::vector<Scene
     glm::vec3 minTnormal;
     glm::vec3 minTintersection;
     bool intersect = false;
-    for(SceneObject s: scene)
+    std::vector<int> boundingBoxs;
+    bvhTraverse(position, direction, tree,root,boundingBoxs);
+    if(boundingBoxs.size() == 0)
     {
-        if(s.sphere)
+        color = glm::vec3(0,0,0);
+        return false;
+    }
+    
+    for(int box: boundingBoxs)
+    {
+        for(int i = 0; i<tree[box].numObjs; i++)
         {
-            float intersectT;
-            glm::vec3 normal;
-            glm::vec3 intersection;
-            if(intersectSphere(position, direction, s, intersectT,normal,intersection))
+            if(scene[tree[box].objs[i]].sphere)
             {
-                if(intersectT<minT)
+                float intersectT;
+                glm::vec3 normal;
+                glm::vec3 intersection;
+                if(intersectSphere(position, direction, scene[tree[box].objs[i]], intersectT,normal,intersection))
                 {
-                    minTnormal = normal;
-                    minTintersection = intersection;
-                    intersectObj = s;
-                    minT = intersectT;
-                    intersect = true;
+                    if(intersectT<minT)
+                    {
+                        minTnormal = normal;
+                        minTintersection = intersection;
+                        intersectObj = scene[tree[box].objs[i]];
+                        minT = intersectT;
+                        intersect = true;
+                    }
                 }
             }
         }
@@ -194,7 +289,7 @@ bool intersectObjects(glm::vec3 position, glm::vec3 direction, std::vector<Scene
             return true;
         }
         
-        color += checkLights(position,direction, minTnormal, minTintersection, lights, minT, intersectObj,scene) + 0.2f * intersectObj.ambient;
+        color += checkLights(position,direction, minTnormal, minTintersection, lights, minT, intersectObj,scene,tree) + 0.2f * intersectObj.ambient;
         
         if(numBounces != 0)
         {
@@ -202,9 +297,9 @@ bool intersectObjects(glm::vec3 position, glm::vec3 direction, std::vector<Scene
             
             glm::vec3 reflectColor = glm::vec3(0.0,0.0,0.0);;
             float dummyt;
-            if(!intersectObjects(minTintersection, reflectedRay, scene, lights, reflectColor, false, numBounces-1,dummyt))
+            if(!intersectObjects(minTintersection, reflectedRay, scene, lights, reflectColor, false, numBounces-1,dummyt,tree))
             {
-                rayPlaneIntersection(minTintersection, reflectedRay, reflectColor, scene, lights, numBounces-1);
+                rayPlaneIntersection(minTintersection, reflectedRay, reflectColor, scene, lights, numBounces-1,tree);
                 color += glm::min(intersectObj.reflective * reflectColor,.2f * reflectColor);
             }
             else
@@ -216,7 +311,7 @@ bool intersectObjects(glm::vec3 position, glm::vec3 direction, std::vector<Scene
     return false;
 }
 
-glm::vec3 checkLights(glm::vec3 position, glm::vec3 direction, glm::vec3 normal, glm::vec3 intersection, std::vector<Light>& lights, float t, SceneObject s, std::vector<SceneObject>& scene)
+glm::vec3 checkLights(glm::vec3 position, glm::vec3 direction, glm::vec3 normal, glm::vec3 intersection, std::vector<Light>& lights, float t, SceneObject s, std::vector<SceneObject>& scene,std::vector<Node>& tree)
 {
     glm::vec3 color;
     direction = glm::normalize(direction);
@@ -236,7 +331,7 @@ glm::vec3 checkLights(glm::vec3 position, glm::vec3 direction, glm::vec3 normal,
             reflectFromLight = -toLight;
             glm::vec3 dummyC;
             float t;
-            if(intersectObjects(intersection, toLight, scene, lights, dummyC, true, 0,t))
+            if(intersectObjects(intersection, toLight, scene, lights, dummyC, true, 0,t,tree))
             {
                 glm::vec3 ipoint = intersection+t*toLight;
                 float dtoLight = sqrt(pow(intersection[0]-l.position[0],2)+pow(intersection[1]-l.position[1],2)+pow(intersection[2]-l.position[2],2));
@@ -253,7 +348,7 @@ glm::vec3 checkLights(glm::vec3 position, glm::vec3 direction, glm::vec3 normal,
             reflectFromLight = glm::normalize(l.direction);
             glm::vec3 dummyC;
             float dummyT;
-            if(intersectObjects(intersection, toLight, scene, lights, dummyC, true, 0,dummyT))
+            if(intersectObjects(intersection, toLight, scene, lights, dummyC, true, 0,dummyT,tree))
             {
                 distance = distance * 0;
             }
@@ -305,7 +400,7 @@ bool intersectSphere(glm::vec3 position, glm::vec3 direction, SceneObject s, flo
 
 
 /*Used to get a ray-wall intersection point*/
-bool rayPlaneIntersection(glm::vec3 position, glm::vec3 direction, glm::vec3& color, std::vector<SceneObject>& scene, std::vector<Light>& lights, int numBounces)
+bool rayPlaneIntersection(glm::vec3 position, glm::vec3 direction, glm::vec3& color, std::vector<SceneObject>& scene, std::vector<Light>& lights, int numBounces,std::vector<Node>& tree)
 {
     //floor
     glm::vec3 up = glm::vec3(0,1,0);
@@ -324,7 +419,7 @@ bool rayPlaneIntersection(glm::vec3 position, glm::vec3 direction, glm::vec3& co
             wall.specular = glm::vec3(0.0,0.0,0.0);
             wall.shininess = 2;
             wall.reflective = glm::vec3(0.0,0.0,0.0);
-            color = wall.ambient * 0.2f + checkLights(position, direction, up, intersect, lights, t, wall, scene);
+            color = wall.ambient * 0.2f + checkLights(position, direction, up, intersect, lights, t, wall, scene, tree);
             
             if(intersect[2]>-15 && intersect[2]<13 && intersect[0]>-6 && intersect[0] < 6)
             {
@@ -332,10 +427,10 @@ bool rayPlaneIntersection(glm::vec3 position, glm::vec3 direction, glm::vec3& co
                 {
                     glm::vec3 reflectedRay = glm::normalize(glm::reflect(direction, up));
                     glm::vec3 reflectColor = glm::vec3(0,0,0);
-                    if(intersectObjects(intersect, reflectedRay, scene, lights, reflectColor, false, numBounces-1, dummyt))
+                    if(intersectObjects(intersect, reflectedRay, scene, lights, reflectColor, false, numBounces-1, dummyt, tree))
                         color += .2f*reflectColor;
                     else
-                        rayPlaneIntersection(intersect, reflectedRay, reflectColor, scene, lights, numBounces-1);
+                        rayPlaneIntersection(intersect, reflectedRay, reflectColor, scene, lights, numBounces-1,tree);
                     
                 }
                 return true;
@@ -361,17 +456,17 @@ bool rayPlaneIntersection(glm::vec3 position, glm::vec3 direction, glm::vec3& co
             wall.specular = glm::vec3(0.0,0.0,0.0);
             wall.reflective = glm::vec3(0.0,0.0,0.0);
             wall.shininess = 2;
-            color = wall.ambient * 0.2f+checkLights(position, direction, up, intersect, lights, t, wall, scene);
+            color = wall.ambient * 0.2f+checkLights(position, direction, up, intersect, lights, t, wall, scene,tree);
             if(intersect[2]>-15 && intersect[2] < 13 && intersect[1] < 9 && intersect[1]>-2)
             {
                 if(numBounces != 0)
                 {
                     glm::vec3 reflectedRay = glm::normalize(glm::reflect(direction, up));
                     glm::vec3 reflectColor = glm::vec3(0,0,0);
-                    if(intersectObjects(intersect, reflectedRay, scene, lights, reflectColor, false, numBounces-1, dummyt))
+                    if(intersectObjects(intersect, reflectedRay, scene, lights, reflectColor, false, numBounces-1, dummyt,tree))
                         color += .2f*reflectColor;
                     else
-                        rayPlaneIntersection(intersect, reflectedRay, reflectColor, scene, lights, numBounces-1);
+                        rayPlaneIntersection(intersect, reflectedRay, reflectColor, scene, lights, numBounces-1,tree);
                 }
                 return true;
             }
@@ -394,7 +489,7 @@ bool rayPlaneIntersection(glm::vec3 position, glm::vec3 direction, glm::vec3& co
             wall.specular = glm::vec3(0.0,0.0,0.0);
             wall.shininess = 2;
             wall.reflective = glm::vec3(0.0,0.0,0.0);
-            color = wall.ambient *.2f + checkLights(position, direction, up, intersect, lights, t, wall, scene);
+            color = wall.ambient *.2f + checkLights(position, direction, up, intersect, lights, t, wall, scene,tree);
             
             if(intersect[0] < 6 && intersect[0] > -6 && intersect[1] < 9 && intersect[1] > -2 )
             {
@@ -402,10 +497,10 @@ bool rayPlaneIntersection(glm::vec3 position, glm::vec3 direction, glm::vec3& co
                 {
                     glm::vec3 reflectedRay = glm::normalize(glm::reflect(direction, up));
                     glm::vec3 reflectColor = glm::vec3(0,0,0);
-                    if(intersectObjects(intersect, reflectedRay, scene, lights, reflectColor, false, numBounces-1, dummyt))
+                    if(intersectObjects(intersect, reflectedRay, scene, lights, reflectColor, false, numBounces-1, dummyt,tree))
                         color += .2f*reflectColor;
                     else
-                        rayPlaneIntersection(intersect, reflectedRay, reflectColor, scene, lights, numBounces-1);
+                        rayPlaneIntersection(intersect, reflectedRay, reflectColor, scene, lights, numBounces-1,tree);
                 }
                 return true;
             }
@@ -429,7 +524,7 @@ bool rayPlaneIntersection(glm::vec3 position, glm::vec3 direction, glm::vec3& co
             wall.specular = glm::vec3(0.0,0.0,0.0);
             wall.shininess = 2;
             wall.reflective = glm::vec3(0.0,0.0,0.0);
-            color = wall.ambient *.2f + checkLights(position, direction, up, intersect, lights, t, wall, scene);
+            color = wall.ambient *.2f + checkLights(position, direction, up, intersect, lights, t, wall, scene,tree);
             
             if(intersect[0] < 6 && intersect[0] > -6 && intersect[1] < 9 && intersect[1] > -2 )
             {
@@ -437,10 +532,10 @@ bool rayPlaneIntersection(glm::vec3 position, glm::vec3 direction, glm::vec3& co
                 {
                     glm::vec3 reflectedRay = glm::normalize(glm::reflect(direction, up));
                     glm::vec3 reflectColor = glm::vec3(0,0,0);
-                    if(intersectObjects(intersect, reflectedRay, scene, lights, reflectColor, false, numBounces-1, dummyt))
+                    if(intersectObjects(intersect, reflectedRay, scene, lights, reflectColor, false, numBounces-1, dummyt,tree))
                         color += .2f*reflectColor;
                     else
-                        rayPlaneIntersection(intersect, reflectedRay, reflectColor, scene, lights, numBounces-1);
+                        rayPlaneIntersection(intersect, reflectedRay, reflectColor, scene, lights, numBounces-1,tree);
                 }
                 return true;
             }
@@ -464,7 +559,7 @@ bool rayPlaneIntersection(glm::vec3 position, glm::vec3 direction, glm::vec3& co
             wall.specular = glm::vec3(0.0,0.0,0.0);
             wall.shininess = 2;
             wall.reflective = glm::vec3(0.0,0.0,0.0);
-            color = wall.ambient *.2f + checkLights(position, direction, up, intersect, lights, t, wall, scene);
+            color = wall.ambient *.2f + checkLights(position, direction, up, intersect, lights, t, wall, scene,tree);
             
             if(intersect[2]>-15 && intersect[2] < 13 && intersect[1] < 9 && intersect[1]>-2)
             {
@@ -473,10 +568,10 @@ bool rayPlaneIntersection(glm::vec3 position, glm::vec3 direction, glm::vec3& co
                     glm::vec3 reflectedRay = glm::normalize(glm::reflect(direction, up));
                     glm::vec3 reflectColor = glm::vec3(0,0,0);
                     
-                    if(intersectObjects(intersect, reflectedRay, scene, lights, reflectColor, false, numBounces-1, dummyt))
+                    if(intersectObjects(intersect, reflectedRay, scene, lights, reflectColor, false, numBounces-1, dummyt,tree))
                         color += .2f*reflectColor;
                     else
-                        rayPlaneIntersection(intersect, reflectedRay, reflectColor, scene, lights, numBounces-1);
+                        rayPlaneIntersection(intersect, reflectedRay, reflectColor, scene, lights, numBounces-1,tree);
                 }
                 return true;
             }
@@ -499,7 +594,7 @@ bool rayPlaneIntersection(glm::vec3 position, glm::vec3 direction, glm::vec3& co
             wall.specular = glm::vec3(0.0,0.0,0.0);
             wall.shininess = 2;
             wall.reflective = glm::vec3(0.0,0.0,0.0);
-            color = wall.ambient * .2f + checkLights(position, direction, up, intersect, lights, t, wall, scene);
+            color = wall.ambient * .2f + checkLights(position, direction, up, intersect, lights, t, wall, scene,tree);
         
             if(intersect[2]>-15 && intersect[2]<13 && intersect[0]>-6 && intersect[0] < 6)
             {
@@ -509,10 +604,10 @@ bool rayPlaneIntersection(glm::vec3 position, glm::vec3 direction, glm::vec3& co
                     glm::vec3 reflectedRay = glm::normalize(glm::reflect(direction, up));
                     
                     glm::vec3 reflectColor = glm::vec3(0,0,0);
-                    if(intersectObjects(intersect, reflectedRay, scene, lights, reflectColor, false, numBounces-1, dummyt))
+                    if(intersectObjects(intersect, reflectedRay, scene, lights, reflectColor, false, numBounces-1, dummyt,tree))
                         color += .2f*reflectColor;
                     else
-                        rayPlaneIntersection(intersect, reflectedRay, reflectColor, scene, lights, numBounces-1);
+                        rayPlaneIntersection(intersect, reflectedRay, reflectColor, scene, lights, numBounces-1,tree);
                 }
                 return true;
             }

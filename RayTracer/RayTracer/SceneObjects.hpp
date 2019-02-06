@@ -28,6 +28,7 @@ public:
 class SceneObject
 {
 public:
+    int objNum;
     glm::vec3 position;
     glm::vec3 ambient;
     glm::vec3 diffuse;
