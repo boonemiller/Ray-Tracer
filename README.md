@@ -101,4 +101,7 @@ So now when a ray is traveling through a scene, I test whether or not the ray in
 
 This is an example of how the tree might look if you used one object per leaf (taken from nvidia).
 
-Graph of the speed ups achieved by adding a bvh acceleration structure into my raytracing code. 
+
+![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/bvh-performance-graph.png)
+
+Graph of the speed ups achieved by adding a bvh acceleration structure into my raytracing code. This shows the percentage speed up of using a bvh acceleration structure over no acceleration structure at all, on a variety of scenes. 
