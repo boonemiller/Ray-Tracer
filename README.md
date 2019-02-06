@@ -89,3 +89,14 @@ Adding multithreading support is fairly simple. Ray tracers are known to be emba
 I ran the above scenes raytracing code on three different Intel processors. A intel dual-core 3.1 GHz i5, a 2.5 GHz quad-core i7, and a 2.9 Ghz quad-core i7. Rather unsurprisingly the results are what should be expected. The 3.1 GHz i5 beat out the 2.5 GHz i7 on single and double threaded runs, but starts to lose starting with 3 threads. And the 2.9 GHz i7 was faster than both of the other processors on every run.
 
 ![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/CPUGraph.png)
+
+
+### BVH Acceleration Structure
+
+I implemented a BVH tree acceleration structure to decrease the number of object intersection tests needed for each ray casted. The basic process for this is that a ray traveling through a scene will only get close enough to a few objects and mostly miss all of the other objects. So in order to decrease the amount of these intersection tests for the missed objects. I create bounding boxes around some number of the objects. If the ray intersects a box then it is possible that it will intersect the objects inside the box. If it doesn’t intersect the bounding box then it can't intersect any of the objects within the box. I make a tree out of these bounding boxes where the root represents the whole scene’s bounding box, and each node represents some smaller bounding box with some subset of the objects. I stop building the tree when I get to a small number of objects within a bounding box, I said 3 or less, these represent the leaves of the tree. 
+
+So now when a ray is traveling through a scene, I test whether or not the ray intersects any of the bounding boxes that represent the objects. If it intersects any of the leaf bounding boxes I can tests only those objects (3 or less), instead of the entire scene.
+
+
+
+
