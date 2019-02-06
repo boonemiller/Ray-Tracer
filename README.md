@@ -97,6 +97,11 @@ I implemented a BVH tree acceleration structure to decrease the number of object
 
 So now when a ray is traveling through a scene, I test whether or not the ray intersects any of the bounding boxes that represent the objects. If it intersects any of the leaf bounding boxes I can tests only those objects (3 or less), instead of the entire scene.
 
+![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/nvidia-bvh.png)
+
+This is an example of how the tree might look if you used one object per leaf (taken from nvidia).
 
 
+![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/bvh-performance.png)
 
+Graph of the speed ups achieved by adding a bvh acceleration structure into my raytracing code. 
