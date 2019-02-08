@@ -4,7 +4,7 @@ Ray Tracer implementation in C++, Random Sample AA, multi-threading, bvh acceler
 ### Introduction
 
 Described in this README and the code in this repo is a personal project on a basic raytracing implementation.
-Added features on top of the basic ray tracer include random sample per pixel anti-aliasing and multithreading support. 
+Added features on top of the basic ray tracer include random sample per pixel anti-aliasing, multithreading support, and a bvh acceleration structure. 
 I described the features of the ray-tracer and included a performance report of multithreading the ray tracer on three different Intel processors.
 
 ![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/16AA.bmp)
