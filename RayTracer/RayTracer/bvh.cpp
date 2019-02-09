@@ -11,14 +11,14 @@ int constructTree(std::vector<SceneObject>& objects, Node& currentNode, std::vec
 {
     if(objects.size() <= 3)
     {
-        for(int i = 0; i<objects.size();i++)
+        for(int i = 0; i<(int)objects.size();i++)
         {
             currentNode.objs[i] = objects[i].objNum;
         }
-        currentNode.numObjs = objects.size();
+        currentNode.numObjs = (int)objects.size();
         currentNode.isleaf = true;
         nodes.push_back(currentNode);
-        return nodes.size()-1;
+        return (int)nodes.size()-1;
     }
     
     Node newLeftNode;
@@ -47,7 +47,6 @@ int constructTree(std::vector<SceneObject>& objects, Node& currentNode, std::vec
     std::vector<SceneObject> rightObjects;
     for(int i = 0; i < objects.size(); i++)
     {
-        
         if(objects[i].position[currentNode.longestAxis] < currentNode.midpoint)
         {
             if(objects[i].position[0]-objects[i].radius < minLeftX)
@@ -160,7 +159,7 @@ int constructTree(std::vector<SceneObject>& objects, Node& currentNode, std::vec
     currentNode.right = r;
     
     nodes.push_back(currentNode);
-    return nodes.size()-1;
+    return (int)nodes.size()-1;
 }
 
 

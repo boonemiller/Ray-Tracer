@@ -89,14 +89,13 @@ void startRayTracing(float width, float height, float (&pixelcolorBuffer)[360][7
         newThread->chunkSize = chunkSize;
         newThread->threadNum = n;
         newThread->tree = &nodes;
-        int rc = pthread_create(&thread[n], NULL, &CastRays,(void *)newThread);
+        pthread_create(&thread[n], NULL, &CastRays,(void *)newThread);
         arr[n] = newThread;
-        
     }
     
     for(int n = 0; n < numThreads; n++)
     {
-       int rc =  pthread_join(thread[n], NULL);
+       pthread_join(thread[n], NULL);
     }
     
     //fills image buffer
@@ -171,8 +170,8 @@ void* CastRays(void *arguments)
 }
 
 //returns the indecies of the objects to check based on ray
-//I think the problem is from overlapping bounding boxs and im not checking both boxs, maybe I need to return a list of possible bounding boxs
-void bvhTraverse(glm::vec3 position, glm::vec3 direction, std::vector<Node>& tree, int currentNode,std::vector<int>& boxs)
+//I think the problem is from overlapping bounding boxes and im not checking both boxes, maybe I need to return a list of possible bounding boxes
+void bvhTraverse(glm::vec3 position, glm::vec3 direction, std::vector<Node>& tree, int currentNode,std::vector<int>& boxes)
 {
     int retValue = -1;
     if(tree[currentNode].isleaf)
@@ -180,15 +179,15 @@ void bvhTraverse(glm::vec3 position, glm::vec3 direction, std::vector<Node>& tre
         if(boundingBoxIntersection(position, direction, tree[currentNode]))
         {
             retValue = currentNode;
-            boxs.push_back(retValue);
+            boxes.push_back(retValue);
         }
     }
     else
     {
         if(boundingBoxIntersection(position, direction, tree[tree[currentNode].left]))
-            bvhTraverse(position, direction, tree, tree[currentNode].left,boxs);
+            bvhTraverse(position, direction, tree, tree[currentNode].left,boxes);
         if(boundingBoxIntersection(position, direction, tree[tree[currentNode].right]))
-            bvhTraverse(position, direction, tree, tree[currentNode].right,boxs);
+            bvhTraverse(position, direction, tree, tree[currentNode].right,boxes);
     }
 }
 //function taken and adapted from
@@ -246,15 +245,15 @@ bool intersectObjects(glm::vec3 position, glm::vec3 direction, std::vector<Scene
     glm::vec3 minTnormal;
     glm::vec3 minTintersection;
     bool intersect = false;
-    std::vector<int> boundingBoxs;
-    bvhTraverse(position, direction, tree,root,boundingBoxs);
-    if(boundingBoxs.size() == 0)
+    std::vector<int> boundingBoxes;
+    bvhTraverse(position, direction, tree,root,boundingBoxes);
+    if(boundingBoxes.size() == 0)
     {
         color = glm::vec3(0,0,0);
         return false;
     }
     
-    for(int box: boundingBoxs)
+    for(int box: boundingBoxes)
     {
         for(int i = 0; i<tree[box].numObjs; i++)
         {
@@ -407,7 +406,6 @@ bool rayPlaneIntersection(glm::vec3 position, glm::vec3 direction, glm::vec3& co
     float denom = glm::dot(up,direction);
     if(abs(denom) > .0001f)
     {
-        
         float t = glm::dot((glm::vec3(0,-2,0)-position),up)/denom;
         if(t >= 0.0-.0001f)
         {
@@ -443,7 +441,6 @@ bool rayPlaneIntersection(glm::vec3 position, glm::vec3 direction, glm::vec3& co
     denom = glm::dot(up,direction);
     if(abs(denom) > .0001f)
     {
-        
         float t = glm::dot((glm::vec3(-6,0,0)-position),up)/denom;
         if(t >= 0.0-.0001f)
         {
@@ -515,7 +512,6 @@ bool rayPlaneIntersection(glm::vec3 position, glm::vec3 direction, glm::vec3& co
         float t = glm::dot((glm::vec3(0,0,13)-position),up)/denom;
         if(t >= 0.0-.0001f)
         {
-            
             glm::vec3 intersect = position+t*direction;
             
             SceneObject wall;
@@ -550,7 +546,6 @@ bool rayPlaneIntersection(glm::vec3 position, glm::vec3 direction, glm::vec3& co
         float t = glm::dot((glm::vec3(6,0,0)-position),up)/denom;
         if(t >= 0.0-.0001f)
         {
-           
             glm::vec3 intersect = position+t*direction;
             
             SceneObject wall;
