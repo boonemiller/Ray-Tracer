@@ -88,7 +88,7 @@ Adding multithreading support is fairly simple. Ray tracers are known to be emba
 
 I ran the above scenes raytracing code on three different Intel processors. A intel dual-core 3.1 GHz i5, a 2.5 GHz quad-core i7, and a 2.9 Ghz quad-core i7. Rather unsurprisingly the results are what should be expected. The 3.1 GHz i5 beat out the 2.5 GHz i7 on single and double threaded runs, but starts to lose starting with 3 threads. And the 2.9 GHz i7 was faster than both of the other processors on every run.
 
-![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/CPUGraph.png)
+![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/cpu-performance-graph.png)
 
 
 ### BVH Acceleration Structure
@@ -102,6 +102,6 @@ So now when a ray is traveling through a scene, I test whether or not the ray in
 This is an example of how the tree might look if you used one object per leaf (taken from nvidia).
 
 
-![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/bvh-performance-graph.png)
+![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/bvh-performance.png)
 
 Graph of the speed ups achieved by adding a bvh acceleration structure into my raytracing code. This shows the percentage speed up of using a bvh acceleration structure over no acceleration structure at all, on a variety of scenes. 
