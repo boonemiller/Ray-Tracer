@@ -220,9 +220,14 @@ int main(int argc, const char * argv[]) {
     {
         int w = (int) width;
         int h = (int) height;
-        
-        uint8_t pix[w*h*3];
+        uint8_t *pix;
+        pix = (uint8_t *)malloc(w*h*3 * sizeof(uint8_t));
         memset(pix, 0xff, w*h*3);
+        
+        float buffer[360][720][3];
+        startRayTracing(width, height, buffer, cameraPosition, cameraDirection, scene, lights);
+        
+        /*Intial Frame*/
         for(int i = 0; i<h; i++)
         {
             for(int j = 0;j<w;j++)
@@ -231,7 +236,24 @@ int main(int argc, const char * argv[]) {
                 pix[elem+0] = (uint8_t) (buffer[i][j][0] * 255.0);
                 pix[elem+1] = (uint8_t) (buffer[i][j][1] * 255.0);
                 pix[elem+2] = (uint8_t) (buffer[i][j][2] * 255.0);
-
+                
+            }
+        }
+        /*Render 60 frames and try to denoise*/
+        for(int ii = 0; ii<60; ii++)
+        {
+            float buffer1[360][720][3];
+            startRayTracing(width, height, buffer1, cameraPosition, cameraDirection, scene, lights);
+            for(int i = 0; i<h; i++)
+            {
+                for(int j = 0;j<w;j++)
+                {
+                    int elem = (i*w*3) + (j*3);
+                    pix[elem+0] = std::max(pix[elem+0], (uint8_t) (buffer1[i][j][0] * 255.0));
+                    pix[elem+1] = std::max(pix[elem+1], (uint8_t) (buffer1[i][j][1] * 255.0));
+                    pix[elem+2] = std::max(pix[elem+2], (uint8_t) (buffer1[i][j][2] * 255.0));
+                    
+                }
             }
         }
         stbi_write_bmp("/tmp/fb.bmp", w, h, 3, pix);
