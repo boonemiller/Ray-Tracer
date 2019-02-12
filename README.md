@@ -108,7 +108,7 @@ Graph of the speed ups achieved by adding a bvh acceleration structure into my r
 
 ### Naive Denoising using Historical Pixel Data 
 
-I attempted to denoise my ray traced scene by using historical pixel data. I ray trace the scene 60 times, and each time we render the frame, we look at an individual pixels history. If the pixel contained noise in an old frame but a good value in the new frame, we take the good value. I do this by simply taking the max of an old frame and the new frame. I can do this because all of our noise values are black, or (0,0,0) rbg and any good frame would be greater than those values. 
+I attempted to denoise my ray traced scene by using historical pixel data. I ray trace the scene 60 times, and each time I render the frame, I look at an individual pixels history. If the pixel contained noise in an old frame but a good value in the new frame, we take the good value. I do this by simply taking the max of an old frame and the new rendered frame. I can do this because all of our noise values are black, or (0,0,0) rbg and any good frame would be greater than those values. 
 
 ![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/denoised.bmp)
 
