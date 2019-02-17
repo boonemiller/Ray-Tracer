@@ -15,6 +15,7 @@
 #include <pthread.h>
 #include <chrono>
 #include "bvh.hpp"
+#include <random>
 
 float RAY_EPSILON = 0.000000001;
 bool antialiasing = true;
@@ -42,7 +43,6 @@ struct arguments
 
 void startRayTracing(float width, float height, float (&pixelcolorBuffer)[360][720][3],glm::vec3 cameraPosition, glm::vec3 cameraDirection, std::vector<SceneObject>& scene, std::vector<Light>& lights)
 {
-    
     //*****Builds bvh tree*****
     std::vector<Node> nodes;
     Node start;
@@ -52,6 +52,7 @@ void startRayTracing(float width, float height, float (&pixelcolorBuffer)[360][7
     start.minY = std::numeric_limits<float>::max();;
     start.maxZ = std::numeric_limits<float>::min();
     start.minZ = std::numeric_limits<float>::max();;
+    
     //creates world bounding box information, includes all the objects
     for(SceneObject obj: scene)
     {
@@ -69,11 +70,34 @@ void startRayTracing(float width, float height, float (&pixelcolorBuffer)[360][7
         if(obj.position[2]+obj.radius > start.maxZ)
             start.maxZ = obj.position[2]+obj.radius;
     }
-    start.midpoint = 0.0;
-    start.longestAxis = 0;
-    root = constructTree(scene, start, nodes);
-    //*************************
     
+    if(start.maxX-start.minX > start.maxY-start.minY)
+    {
+        if(start.maxX-start.minX > start.maxZ - start.minZ)
+        {
+            start.longestAxis = 0;
+            start.midpoint = (start.maxX+start.minX)/2;
+        }
+    }
+    if(start.maxY-start.minY > start.maxX-start.minX)
+    {
+        if(start.maxY-start.minY > start.maxZ-start.minZ)
+        {
+            start.longestAxis = 1;
+            start.midpoint = (start.maxY+start.minY)/2;
+        }
+    }
+    if(start.maxZ-start.minZ > start.maxX-start.minX)
+    {
+        if(start.maxZ-start.minZ > start.maxY-start.minY)
+        {
+            start.longestAxis = 2;
+            start.midpoint = (start.maxZ+start.minZ)/2;
+        }
+    }
+    root = constructTree(scene, start, nodes);
+    
+    //*************************
     pthread_t thread[numThreads];
     int chunkSize = width/numThreads;
     struct arguments *arr[numThreads];
@@ -91,6 +115,7 @@ void startRayTracing(float width, float height, float (&pixelcolorBuffer)[360][7
         newThread->tree = &nodes;
         pthread_create(&thread[n], NULL, &CastRays,(void *)newThread);
         arr[n] = newThread;
+        
     }
     
     for(int n = 0; n < numThreads; n++)
@@ -111,6 +136,8 @@ void startRayTracing(float width, float height, float (&pixelcolorBuffer)[360][7
             }
         }
     }
+    for(int n = 0; n<numThreads;n++)
+        free(arr[n]);
 }
 
 
@@ -279,7 +306,6 @@ bool intersectObjects(glm::vec3 position, glm::vec3 direction, std::vector<Scene
     
     if(intersect)
     {
-            
         minTintersection = minTintersection+minTnormal*RAY_EPSILON;
         
         if(shadowTest)
@@ -319,7 +345,40 @@ glm::vec3 checkLights(glm::vec3 position, glm::vec3 direction, glm::vec3 normal,
     glm::vec3 reflectFromLight;
     
     for(Light l : lights){
-        if(l.point)
+        if(l.area)
+        {
+            std::random_device rd;  //Will be used to obtain a seed for the random number engine
+            std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+            std::uniform_real_distribution<> dis(0.0, l.radius);
+            glm::vec3 avgcolor;
+            int lightSamples = 8;
+            for(int i = 0 ;i<lightSamples;i++)
+            {
+                float r = dis(gen);
+                float theta = dis(gen);
+                //printf("r = %f theta = %f",randomsamples[i],randomsamples[i+1]);
+                
+                float x = r * cos(theta);
+                float z = r * sin(theta);
+                l.position[0] += x;
+                l.position[2] += z;
+                toLight = glm::normalize(l.position-intersection);
+                reflectFromLight = -toLight;
+                glm::vec3 dummyC;
+                float dummyT;
+                distance = 1.0f;
+                if(intersectObjects(intersection, toLight, scene, lights, dummyC, true, 0,dummyT,tree))
+                {
+                    distance = 0;
+                }
+                
+                avgcolor += distance * l.color * ( .6f * s.diffuse * glm::max(glm::dot(toLight,normal),0.0f) + .2f * s.specular * glm::pow(glm::dot(glm::reflect(reflectFromLight, normal), -direction),s.shininess));
+            }
+            color += avgcolor/(float)lightSamples;
+            
+            
+        }
+        else if(l.point)
         {
             float d = sqrt(pow(intersection[0]-l.position[0],2)+pow(intersection[1]-l.position[1],2)+pow(intersection[2]-l.position[2],2));
             distance = 1.0f/(l.constantTerm + l.linearTerm * d + l.quadraticTerm * pow(d,2));
@@ -338,8 +397,9 @@ glm::vec3 checkLights(glm::vec3 position, glm::vec3 direction, glm::vec3 normal,
                 if(dtoLight>dtoLightIntersection)
                     distance = distance * 0;
             }
-            
+            color += distance * l.color * ( .6f * s.diffuse * glm::max(glm::dot(toLight,normal),0.0f) + .2f * s.specular * glm::pow(glm::dot(glm::reflect(reflectFromLight, normal), -direction),s.shininess));
         }
+        
         else
         {
             distance = 1.0f;
@@ -351,9 +411,10 @@ glm::vec3 checkLights(glm::vec3 position, glm::vec3 direction, glm::vec3 normal,
             {
                 distance = distance * 0;
             }
+            color += distance * l.color * ( .6f * s.diffuse * glm::max(glm::dot(toLight,normal),0.0f) + .2f * s.specular * glm::pow(glm::dot(glm::reflect(reflectFromLight, normal), -direction),s.shininess));
         }
         
-        color += distance * l.color * ( .6f * s.diffuse * glm::max(glm::dot(toLight,normal),0.0f) + .2f * s.specular * glm::pow(glm::dot(glm::reflect(reflectFromLight, normal), -direction),s.shininess));
+        
     }
     return color;
 }

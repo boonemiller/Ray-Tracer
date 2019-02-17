@@ -12,7 +12,7 @@
 #include "glm/glm/glm.hpp"
 #include "SceneObjects.hpp"
 #include "Ray.hpp"
-
+#include <math.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
@@ -187,7 +187,7 @@ int main(int argc, const char * argv[]) {
     
     //**************Adding Lights*****************
     std::vector<Light> lights;
-    Light l1;
+    /*Light l1;
     l1.direction = glm::vec3(0, -1, 0);
     l1.color = glm::vec3(1.0, 1.0, 1.0);
     l1.point = false;
@@ -206,13 +206,20 @@ int main(int argc, const char * argv[]) {
     l3.direction = glm::vec3(0,1,0);
     l3.color = glm::vec3(0.2,0.2,0.2);
     l3.point = false;
-    lights.push_back(l3);
+    lights.push_back(l3);*/
+    
+    //area light
+    Light l4;
+    l4.position = glm::vec3(0,8,0);
+    l4.area = true;
+    l4.color = glm::vec3(1,1,1);
+    l4.radius = 1;
+    lights.push_back(l4);
     //********************************************
     
     
-    /*Declare pixel buffer and start ray tracing*/
-    float buffer[360][720][3];
-    startRayTracing(width, height, buffer, cameraPosition, cameraDirection, scene, lights);
+    
+    
     
     
     
@@ -220,6 +227,8 @@ int main(int argc, const char * argv[]) {
     {
         int w = (int) width;
         int h = (int) height;
+        
+        /*Declare pixel buffer and start ray tracing*/
         uint8_t *pix;
         pix = (uint8_t *)malloc(w*h*3 * sizeof(uint8_t));
         memset(pix, 0xff, w*h*3);
@@ -227,7 +236,7 @@ int main(int argc, const char * argv[]) {
         float buffer[360][720][3];
         startRayTracing(width, height, buffer, cameraPosition, cameraDirection, scene, lights);
         
-        /*Intial Frame*/
+        
         for(int i = 0; i<h; i++)
         {
             for(int j = 0;j<w;j++)
@@ -239,11 +248,13 @@ int main(int argc, const char * argv[]) {
                 
             }
         }
-        /*Render 60 frames and try to denoise*/
-        for(int ii = 0; ii<60; ii++)
+        /*Denoising loop*/
+        for(int ii = 0; ii<1; ii++)
         {
             float buffer1[360][720][3];
             startRayTracing(width, height, buffer1, cameraPosition, cameraDirection, scene, lights);
+           
+            
             for(int i = 0; i<h; i++)
             {
                 for(int j = 0;j<w;j++)
@@ -255,8 +266,11 @@ int main(int argc, const char * argv[]) {
                     
                 }
             }
+            
+            
         }
         stbi_write_bmp("/tmp/fb.bmp", w, h, 3, pix);
+        system("open /tmp/fb.bmp");
     }
     
     return 0;

@@ -23,6 +23,8 @@ public:
     float linearTerm;
     float quadraticTerm;
     glm::vec3 position;
+    bool area;
+    float radius;
 };
 
 class SceneObject
