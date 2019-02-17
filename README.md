@@ -112,4 +112,14 @@ I attempted to denoise my ray traced scene by using historical pixel data. I ray
 
 ![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/denoised.bmp)
 
-The scene above is rendered using 4 samples per pixel and using historical pixel data to denoise the scene. It appears to have less noise than the 16 samples per pixel render in the Random Sample Anti-Aliasing section. 
+The scene above is rendered using 4 samples per pixel and using historical pixel data to denoise the scene. It appears to have less noise than the 16 samples per pixel render in the Random Sample Anti-Aliasing section.
+
+
+### Area Lights and Soft Shadows
+
+Area lights are significantly more challenging theoretically than point or directional lights. Instead of light just originating from either a singularity or in a direction from infinitely far away. We have light being emitted in all directions from the emitting side of an object, in our case one side of a disk. In order to be able to tell if a particular point in the scene is in shadow from this area light, we would need to sample all possible points on the light source from our intersection point. Since this is not computationally reasonable, I am going to borrow an idea from Monte Carlo estimation. Monte Carlo estimation (which is used in more advanced renderers) basically says we can approximate an integral of a function by using random samples. So we take what would be a normal integral in the BDRF (simplified a lot by using phong shading) and approximate the integral of the sample point using random samples from the area light. Essentially what I did was take the sum across different random light samples, and then average it using the number of samples. This creates the ability to make soft shadows using area lights.
+
+
+![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/softshadow.bmp)
+
+The above image was created using 4 samples per pixel with 30 light samples per intersection point, and ran 60 times to denoise the scene.
