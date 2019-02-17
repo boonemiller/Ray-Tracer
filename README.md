@@ -104,4 +104,12 @@ This is an example of how the tree might look if you used one object per leaf (t
 
 ![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/bvh-performance.png)
 
-Graph of the speed ups achieved by adding a bvh acceleration structure into my raytracing code. This shows the percentage speed up of using a bvh acceleration structure over no acceleration structure at all, on a variety of scenes. 
+Graph of the speed ups achieved by adding a bvh acceleration structure into my raytracing code. This shows the percentage speed up of using a bvh acceleration structure over no acceleration structure at all, on a variety of scenes.
+
+### Naive Denoising using Historical Pixel Data 
+
+I attempted to denoise my ray traced scene by using historical pixel data. I ray trace the scene 60 times, and each time I render the frame, I look at an individual pixels history. If the pixel contained noise in an old frame but a good value in the new frame, we take the good value. I do this by simply taking the max of an old frame and the new rendered frame. I can do this because all of our noise values are black, or (0,0,0) rbg and any good frame would be greater than those values. 
+
+![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/denoised.bmp)
+
+The scene above is rendered using 4 samples per pixel and using historical pixel data to denoise the scene. It appears to have less noise than the 16 samples per pixel render in the Random Sample Anti-Aliasing section. 
