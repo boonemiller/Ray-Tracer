@@ -125,3 +125,8 @@ Area lights are significantly more challenging theoretically than point or direc
 ![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/softshadow.bmp)
 
 The above image was created using 4 samples per pixel with 30 light samples per intersection point, and ran 60 times to denoise the scene.
+
+
+![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/4lights.bmp)
+
+This is an example of all the implemented features together. 4 samples per pixel, 2 directional lights, 1 pointlight, 1 area light (8 light samples), denoised with 60 frames, 5 secondary bounces, ran across 4 threads. 
