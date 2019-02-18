@@ -187,14 +187,16 @@ int main(int argc, const char * argv[]) {
     
     //**************Adding Lights*****************
     std::vector<Light> lights;
-    /*Light l1;
+    Light l1;
     l1.direction = glm::vec3(0, -1, 0);
     l1.color = glm::vec3(1.0, 1.0, 1.0);
     l1.point = false;
+    l1.area = false;
     lights.push_back(l1);
     
     Light l2;
     l2.point = true;
+    l2.area = false;
     l2.position = glm::vec3(4, 3, -4);
     l2.color = glm::vec3(.5, .5, .5);
     l2.constantTerm = 0.25f;
@@ -202,16 +204,19 @@ int main(int argc, const char * argv[]) {
     l2.quadraticTerm = 0.000045492f;
     lights.push_back(l2);
     
+    
     Light l3;
     l3.direction = glm::vec3(0,1,0);
     l3.color = glm::vec3(0.2,0.2,0.2);
     l3.point = false;
-    lights.push_back(l3);*/
+    l3.area = false;
+    lights.push_back(l3);
     
     //area light
     Light l4;
     l4.position = glm::vec3(0,8,0);
     l4.area = true;
+    l4.point = false;
     l4.color = glm::vec3(1,1,1);
     l4.radius = 1;
     lights.push_back(l4);

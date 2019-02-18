@@ -185,7 +185,7 @@ void* CastRays(void *arguments)
                 if(!intersectObjects(rayPosition, rayDirection, *args->scene, *args->lights, color, false, numBounces, dummyt,*args->tree))
                     rayPlaneIntersection(rayPosition, rayDirection, color,*args->scene,*args->lights,0,*args->tree);
             }
-            
+            color = glm::clamp(color,glm::vec3(0,0,0),glm::vec3(1,1,1));
             args->pix[359-j][i][0] = color[0];
             args->pix[359-j][i][1] = color[1];
             args->pix[359-j][i][2] = color[2];
@@ -365,11 +365,15 @@ glm::vec3 checkLights(glm::vec3 position, glm::vec3 direction, glm::vec3 normal,
                 toLight = glm::normalize(l.position-intersection);
                 reflectFromLight = -toLight;
                 glm::vec3 dummyC;
-                float dummyT;
                 distance = 1.0f;
-                if(intersectObjects(intersection, toLight, scene, lights, dummyC, true, 0,dummyT,tree))
+                float t;
+                if(intersectObjects(intersection, toLight, scene, lights, dummyC, true, 0,t,tree))
                 {
-                    distance = 0;
+                    glm::vec3 ipoint = intersection+t*toLight;
+                    float dtoLight = sqrt(pow(intersection[0]-l.position[0],2)+pow(intersection[1]-l.position[1],2)+pow(intersection[2]-l.position[2],2));
+                    float dtoLightIntersection = sqrt(pow(ipoint[0]-intersection[0],2)+pow(ipoint[1]-intersection[1],2)+pow(ipoint[2]-intersection[2],2));
+                    if(dtoLight>dtoLightIntersection)
+                        distance = distance * 0;
                 }
                 
                 avgcolor += distance * l.color * ( .6f * s.diffuse * glm::max(glm::dot(toLight,normal),0.0f) + .2f * s.specular * glm::pow(glm::dot(glm::reflect(reflectFromLight, normal), -direction),s.shininess));
@@ -399,7 +403,6 @@ glm::vec3 checkLights(glm::vec3 position, glm::vec3 direction, glm::vec3 normal,
             }
             color += distance * l.color * ( .6f * s.diffuse * glm::max(glm::dot(toLight,normal),0.0f) + .2f * s.specular * glm::pow(glm::dot(glm::reflect(reflectFromLight, normal), -direction),s.shininess));
         }
-        
         else
         {
             distance = 1.0f;
