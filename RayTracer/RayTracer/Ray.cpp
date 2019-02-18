@@ -350,12 +350,13 @@ glm::vec3 checkLights(glm::vec3 position, glm::vec3 direction, glm::vec3 normal,
             std::random_device rd;  //Will be used to obtain a seed for the random number engine
             std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
             std::uniform_real_distribution<> dis(0.0, l.radius);
+            std::uniform_real_distribution<> dis2(0.0, 2*PI);
             glm::vec3 avgcolor;
             int lightSamples = 8;
             for(int i = 0 ;i<lightSamples;i++)
             {
                 float r = dis(gen);
-                float theta = dis(gen);
+                float theta = dis2(gen);
                 //printf("r = %f theta = %f",randomsamples[i],randomsamples[i+1]);
                 
                 float x = r * cos(theta);
