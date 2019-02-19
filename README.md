@@ -75,7 +75,7 @@ Scene with 16 Random samples per pixel (top image), AA-Off one sample per pixel 
 
 ### Noise
 
-Noise is a common problem in ray tracers which is why there are plenty of methods to reduce noise in rendered scenes. The only method I implemented was anti-aliasing as described above. As you can see in the pictures, rendering with anti-aliasing(top image) reduced the noise present in the one sample per pixel render (bottom image).
+Noise is a common problem in ray tracers which is why there are plenty of methods to reduce noise in rendered scenes. The only method I implemented was anti-aliasing as described above, and temporal denoising described later. As you can see in the pictures, rendering with anti-aliasing(top image) reduced the noise present in the one sample per pixel render (bottom image).
 
 ### Multi-Threading 
 
