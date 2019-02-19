@@ -1,5 +1,5 @@
 # Ray-Tracer
-Ray Tracer implementation in C++, Random Sample AA, multi-threading, bvh acceleration, temporal denoising, and runtime comparisons on different CPUs
+Ray Tracer implementation in C++, Random Sample AA, multi-threading, bvh acceleration, temporal denoising, soft shadows, and runtime comparisons on different CPUs
 
 ### Introduction
 
