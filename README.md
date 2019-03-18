@@ -141,7 +141,7 @@ However this clearly doesn’t make the best use of the cache with the bvh struc
 
 This involves a major design change from my previous recursive ray tracing solution. The entire design needed to be changed as well as how the functions interacted with each other. To achieve this new design I needed to figure out a way that the threads could interact without having to exit the threads and redistribute the work to the threads through the main thread. I achieved this by using pointers to c++ queues, within the thread stuct, that the threads would operate on, and distribute new rays to other threads. Each thread would get its own queue to operate on. These queues would have a direction associated with them. A thread would operate on only one of these queues. And when we reflect a ray, we basically look at the ray, and depending on what direction the ray falls into, we push that onto the queue that fits that direction. Look at the figure below.
 
-
+![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/Multithreading.png)
 
 Each primary ray and its subsequent reflective rays carry the pixel that it corresponds to its color that gets changed at every intersection point. At the end we just go though all the rays that have reached their bounce depth and update the frame with the color value.
 
