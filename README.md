@@ -84,6 +84,7 @@ Adding multithreading support is fairly simple. Ray tracers are known to be emba
 
 ![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/profiledScene.bmp)
 
+
 ### Processor Comparison on Multithreaded Ray Tracing
 
 I ran the above scenes raytracing code on three different Intel processors. A intel dual-core 3.1 GHz i5, a 2.5 GHz quad-core i7, and a 2.9 Ghz quad-core i7. Rather unsurprisingly the results are what should be expected. The 3.1 GHz i5 beat out the 2.5 GHz i7 on single and double threaded runs, but starts to lose starting with 3 threads. And the 2.9 GHz i7 was faster than both of the other processors on every run.
@@ -130,3 +131,19 @@ The above image was created using 4 samples per pixel with 30 light samples per 
 ![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/4lights.bmp)
 
 This is an example of all the implemented features together. 4 samples per pixel, 2 directional lights, 1 pointlight, 1 area light (8 light samples), denoised with 60 frames, 5 secondary bounces, ran across 4 threads. 
+
+
+### Naive multi-threading vs intelligent multi-threading
+
+On my first iteration of my ray tracer I naively implemented multi-threading as I described above, essentially calculating the color of the pixel by dividing the scene up across the threads and ray tracing one pixel at a time on each thread until the ray died (reached bounce depth). This was done recursively by calculating the reflective bounce and calling the intersection tests again. 
+
+However this clearly doesn’t make the best use of the cache with the bvh structure, and a recursive solution is almost certainly slower than an iterative one. Ideally we would want to calculate rays that traveling in the same general direction sequentially on the CPU. So that we traverse the same parts of the tree and the object and their information will already be in the cache.
+
+This involves a major design change from my previous recursive ray tracing solution. The entire design needed to be changed as well as how the functions interacted with each other. To achieve this new design I needed to figure out a way that the threads could interact without having to exit the threads and redistribute the work to the threads through the main thread. I achieved this by using pointers to c++ queues, within the thread stuct, that the threads would operate on, and distribute new rays to other threads. Each thread would get its own queue to operate on. These queues would have a direction associated with them. A thread would operate on only one of these queues. And when we reflect a ray, we basically look at the ray, and depending on what direction the ray falls into, we push that onto the queue that fits that direction. Look at the figure below.
+
+
+
+Each primary ray and its subsequent reflective rays carry the pixel that it corresponds to its color that gets changed at every intersection point. At the end we just go though all the rays that have reached their bounce depth and update the frame with the color value.
+
+The speed up from the recursive to the iterative solution is significant. The iterative solution is almost 22X faster than the recursive solution. There is also some additional speedup from better use of the cache. About 1.1X speedup with ray sorting. 
+
