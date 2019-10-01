@@ -196,8 +196,6 @@ void* CastRays(void *arguments)
     return NULL;
 }
 
-//returns the indecies of the objects to check based on ray
-//I think the problem is from overlapping bounding boxes and im not checking both boxes, maybe I need to return a list of possible bounding boxes
 void bvhTraverse(glm::vec3 position, glm::vec3 direction, std::vector<Node>& tree, int currentNode,std::vector<int>& boxes)
 {
     int retValue = -1;
