@@ -7,6 +7,8 @@ Described in this README and the code in this repo is a personal project on a ba
 Added features on top of the basic ray tracer include random sample per pixel anti-aliasing, multithreading support, a bvh acceleration structure, temporal denoising, and soft shadows. 
 I described the features of the ray-tracer and included a performance report of multithreading the ray tracer on three different Intel processors.
 
+I also wrote a GPU accelerated implementation of a ray tracer located here https://github.com/boonemiller/CudaRayTracer
+
 ![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/16AA.bmp)
 
 ### Phong-shading
@@ -131,7 +133,3 @@ The above image was created using 4 samples per pixel with 30 light samples per 
 ![alt text](https://raw.githubusercontent.com/boonemiller/Ray-Tracer/master/RayTracer/4lights.bmp)
 
 This is an example of all the implemented features together. 4 samples per pixel, 2 directional lights, 1 pointlight, 1 area light (8 light samples), denoised with 60 frames, 5 secondary bounces, ran across 4 threads. 
-
-### GPU Acceleration
-
-I also wrote a GPU accelerated implementation of a ray tracer located here https://github.com/boonemiller/CudaRayTracer
